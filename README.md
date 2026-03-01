@@ -34,7 +34,7 @@ Switching between ChatGPT, Claude.ai, and Gemini to compare responses is tedious
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/trillm.git
+git clone https://github.com/Nishanshetty/trillm.git
 cd trillm
 npm install
 ```

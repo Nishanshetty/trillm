@@ -37,7 +37,7 @@ You'll need Node.js installed and API keys from the providers you want to use. A
 **Step 1: Clone the repo**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/trillm.git
+git clone https://github.com/Nishanshetty/trillm.git
 cd trillm
 npm install
 ```
@@ -111,7 +111,7 @@ If any of those sound useful — or if you have other ideas — the repo is open
 
 ---
 
-**GitHub:** [github.com/YOUR_USERNAME/trillm](https://github.com/YOUR_USERNAME/trillm)
+**GitHub:** [github.com/Nishanshetty/trillm](https://github.com/Nishanshetty/trillm)
 
 If you found this useful, share it with someone who spends too much time switching between AI tabs. That's most people I know.
 

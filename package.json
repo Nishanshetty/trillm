@@ -1,0 +1,17 @@
+{
+  "name": "trillm",
+  "version": "1.0.0",
+  "description": "One prompt. Three minds. Compare GPT, Claude and Gemini side by side.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.85.4"
+  }
+}

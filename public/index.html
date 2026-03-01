@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TriLLM — One prompt. Three minds.</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3e;
+      --text: #e2e8f0;
+      --muted: #6b7280;
+      --openai: #10a37f;
+      --claude: #cc785c;
+      --gemini: #4285f4;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    header span {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 32px;
+      gap: 20px;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .prompt-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .model-selectors {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .model-select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .model-select-group label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .model-select-group label.openai-label { color: var(--openai); }
+    .model-select-group label.claude-label { color: var(--claude); }
+    .model-select-group label.gemini-label { color: var(--gemini); }
+
+    select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    select:hover { border-color: #4a4d5e; }
+
+    .prompt-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    textarea {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
+      outline: none;
+      transition: border-color 0.15s;
+      line-height: 1.6;
+    }
+
+    textarea:focus { border-color: #4a4d5e; }
+    textarea::placeholder { color: var(--muted); }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+    }
+
+    .btn-clear {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 14px 18px;
+      align-self: flex-end;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      flex: 1;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot-openai { background: var(--openai); }
+    .dot-claude { background: var(--claude); }
+    .dot-gemini { background: var(--gemini); }
+
+    .card-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .card-body {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      min-height: 200px;
+    }
+
+    .placeholder {
+      color: var(--muted);
+      font-style: italic;
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .spinner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      margin-top: 40px;
+    }
+
+    .spinner-ring {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--muted);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 0.85rem;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      border-color: #4a4d5e;
+    }
+
+    .timing {
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      text-align: right;
+    }
+
+    /* Markdown styles */
+    .card-body h1, .card-body h2, .card-body h3 {
+      margin: 16px 0 8px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .card-body h1 { font-size: 1.2em; }
+    .card-body h2 { font-size: 1.05em; }
+    .card-body h3 { font-size: 0.95em; }
+    .card-body p { margin-bottom: 10px; }
+    .card-body p:last-child { margin-bottom: 0; }
+    .card-body ul, .card-body ol { padding-left: 20px; margin-bottom: 10px; }
+    .card-body li { margin-bottom: 4px; }
+    .card-body code {
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: 'Menlo', 'Monaco', monospace;
+      font-size: 0.88em;
+    }
+    .card-body pre {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .card-body pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.85em;
+    }
+    .card-body blockquote {
+      border-left: 3px solid var(--border);
+      padding-left: 12px;
+      color: var(--muted);
+      margin: 10px 0;
+    }
+    .card-body strong { font-weight: 600; }
+    .card-body a { color: #818cf8; }
+    .card-body hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 12px 0;
+    }
+    .card-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 0.85em;
+    }
+    .card-body th, .card-body td {
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .card-body th { background: rgba(255,255,255,0.05); }
+
+    @media (max-width: 900px) {
+      .results-grid { grid-template-columns: 1fr; }
+      .model-selectors { grid-template-columns: 1fr; }
+      main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TriLLM</h1>
+    <span>One prompt. Three minds.</span>
+  </header>
+
+  <main>
+    <div class="prompt-section">
+      <div class="model-selectors">
+        <div class="model-select-group">
+          <label class="openai-label">OpenAI Model</label>
+          <select id="openai-model">
+            <option value="gpt-4o">gpt-4o</option>
+          </select>
+        </div>
+        <div class="model-select-group">
+          <label class="claude-label">Claude Model</label>
+          <select id="claude-model">
+            <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+          </select>
+        </div>
+        <div class="model-select-group">
+          <label class="gemini-label">Gemini Model</label>
+          <select id="gemini-model">
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="prompt-row">
+        <textarea
+          id="prompt"
+          placeholder="Enter your prompt here… (Shift+Enter for new line, Enter to submit)"
+          rows="4"
+        ></textarea>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" id="submit-btn" onclick="submit()">
+            Compare →
+          </button>
+          <button class="btn btn-clear" onclick="clearAll()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card" id="card-openai">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="dot dot-openai"></div>
+            OpenAI
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="card-meta" id="openai-model-label"></span>
+            <button class="copy-btn" onclick="copyText('openai')">Copy</button>
+          </div>
+        </div>
+        <div class="card-body" id="openai-body">
+          <div class="placeholder">Response will appear here</div>
+        </div>
+        <div class="timing" id="openai-timing" style="display:none"></div>
+      </div>
+
+      <div class="result-card" id="card-claude">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="dot dot-claude"></div>
+            Claude
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="card-meta" id="claude-model-label"></span>
+            <button class="copy-btn" onclick="copyText('claude')">Copy</button>
+          </div>
+        </div>
+        <div class="card-body" id="claude-body">
+          <div class="placeholder">Response will appear here</div>
+        </div>
+        <div class="timing" id="claude-timing" style="display:none"></div>
+      </div>
+
+      <div class="result-card" id="card-gemini">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="dot dot-gemini"></div>
+            Gemini
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="card-meta" id="gemini-model-label"></span>
+            <button class="copy-btn" onclick="copyText('gemini')">Copy</button>
+          </div>
+        </div>
+        <div class="card-body" id="gemini-body">
+          <div class="placeholder">Response will appear here</div>
+        </div>
+        <div class="timing" id="gemini-timing" style="display:none"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const rawText = { openai: '', claude: '', gemini: '' };
+
+    // Load models from API
+    fetch('/api/models')
+      .then(r => r.json())
+      .then(data => {
+        populateSelect('openai-model', data.openai);
+        populateSelect('claude-model', data.claude);
+        populateSelect('gemini-model', data.gemini);
+      })
+      .catch(() => {});
+
+    function populateSelect(id, options) {
+      const sel = document.getElementById(id);
+      const current = sel.value;
+      sel.innerHTML = options.map(o =>
+        `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`
+      ).join('');
+    }
+
+    // Submit on Enter (Shift+Enter = newline)
+    document.getElementById('prompt').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submit();
+      }
+    });
+
+    function setLoading(provider) {
+      const body = document.getElementById(`${provider}-body`);
+      const timing = document.getElementById(`${provider}-timing`);
+      body.innerHTML = `<div class="spinner"><div class="spinner-ring"></div> Generating…</div>`;
+      timing.style.display = 'none';
+      rawText[provider] = '';
+    }
+
+    function setResult(provider, text, ms) {
+      const body = document.getElementById(`${provider}-body`);
+      const timing = document.getElementById(`${provider}-timing`);
+      rawText[provider] = text;
+      body.innerHTML = marked.parse(text);
+      timing.textContent = `${(ms / 1000).toFixed(1)}s`;
+      timing.style.display = 'block';
+    }
+
+    function setError(provider, message) {
+      const body = document.getElementById(`${provider}-body`);
+      body.innerHTML = `<div class="error-msg">⚠ ${escapeHtml(message)}</div>`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    async function submit() {
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) return;
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Running…';
+
+      const models = {
+        openai: document.getElementById('openai-model').value,
+        claude: document.getElementById('claude-model').value,
+        gemini: document.getElementById('gemini-model').value,
+      };
+
+      // Update model labels in headers
+      document.getElementById('openai-model-label').textContent = models.openai;
+      document.getElementById('claude-model-label').textContent = models.claude;
+      document.getElementById('gemini-model-label').textContent = models.gemini;
+
+      ['openai', 'claude', 'gemini'].forEach(setLoading);
+
+      const startTime = Date.now();
+
+      try {
+        const res = await fetch('/api/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, models }),
+        });
+
+        const data = await res.json();
+        const elapsed = Date.now() - startTime;
+
+        for (const provider of ['openai', 'claude', 'gemini']) {
+          if (data[provider]?.error) {
+            setError(provider, data[provider].error);
+          } else {
+            setResult(provider, data[provider].text, elapsed);
+          }
+        }
+      } catch (err) {
+        ['openai', 'claude', 'gemini'].forEach(p => setError(p, err.message));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Compare →';
+      }
+    }
+
+    async function copyText(provider) {
+      const text = rawText[provider];
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    }
+
+    function clearAll() {
+      document.getElementById('prompt').value = '';
+      ['openai', 'claude', 'gemini'].forEach(p => {
+        document.getElementById(`${p}-body`).innerHTML = '<div class="placeholder">Response will appear here</div>';
+        document.getElementById(`${p}-timing`).style.display = 'none';
+        document.getElementById(`${p}-model-label`).textContent = '';
+        rawText[p] = '';
+      });
+    }
+  </script>
+</body>
+</html>
